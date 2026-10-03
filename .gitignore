@@ -1,0 +1,41 @@
+# Environment Files
+.env
+.env.*
+!.env.example
+
+# Python & Testing Caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+.venv/
+env/
+venv/
+
+# Node & Frontend
+node_modules/
+frontend/dist/
+frontend/.vitest/
+*.tsbuildinfo
+frontend/tsconfig.tsbuildinfo
+
+# Databases & Persistence
+postgres_data/
+*.sqlite
+*.sqlite3
+*.db
+celerybeat-schedule*
+
+# Logs & OS
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

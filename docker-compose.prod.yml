@@ -1,0 +1,138 @@
+# ==============================================================================
+# Tether - Production Docker Compose Stack (docker-compose.prod.yml)
+# ==============================================================================
+# Architecture:
+# - Reverse Proxy (Nginx) exposed on Port 80 (TLS terminated by upstream load balancer)
+# - Managed PostgreSQL Database (Neon PostgreSQL via DATABASE_URL)
+# - Internal Broker (Redis 7) - NO host port exposure
+# - Multiple Celery Workers for scalable monitoring
+# - Single logical Celery Beat scheduler instance
+# ==============================================================================
+
+services:
+  reverse-proxy:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - tether-internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - tether-internal
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_QUEUE: monitoring
+      SECRET_KEY: ${PROD_SECRET_KEY:-9f83b2a71d0e45c68b3f2901a4e5789bcde0123456789abcdef0123456789abc}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
+      LOG_LEVEL: INFO
+      LOG_FORMAT: json
+      DB_POOL_SIZE: 20
+      DB_MAX_OVERFLOW: 10
+      DB_POOL_TIMEOUT: 30.0
+      DB_POOL_RECYCLE: 1800
+      RESULT_RETENTION_DAYS: 30
+      JOB_RETENTION_DAYS: 14
+      ALERT_RETENTION_DAYS: 90
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')"]
+      interval: 15s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+    networks:
+      - tether-internal
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - tether-internal
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_QUEUE: monitoring
+      SECRET_KEY: ${PROD_SECRET_KEY:-9f83b2a71d0e45c68b3f2901a4e5789bcde0123456789abcdef0123456789abc}
+      LOG_LEVEL: INFO
+      LOG_FORMAT: json
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    command: ["celery", "-A", "app.tasks.celery_app.celery_app", "worker", "--loglevel=INFO", "--concurrency=4", "--queues=monitoring"]
+    networks:
+      - tether-internal
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    deploy:
+      replicas: 1  # Single logical scheduler instance
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_QUEUE: monitoring
+      SECRET_KEY: ${PROD_SECRET_KEY:-9f83b2a71d0e45c68b3f2901a4e5789bcde0123456789abcdef0123456789abc}
+      SCHEDULER_TICK_INTERVAL_SECONDS: 5.0
+      LOG_LEVEL: INFO
+      LOG_FORMAT: json
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+    command: ["celery", "-A", "app.tasks.celery_app.celery_app", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
+    networks:
+      - tether-internal
+
+volumes:
+  redis_data:
+
+networks:
+  tether-internal:
+    driver: bridge
