@@ -8,8 +8,6 @@ import {
   Mail,
   MessageSquare,
   Webhook,
-  CheckCircle2,
-  XCircle,
   RefreshCw,
   EyeOff,
 } from 'lucide-react';
@@ -24,15 +22,20 @@ import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 import { Modal } from '../components/Modal';
+import { Button } from '../components/ui/Button';
+import { IconButton } from '../components/ui/IconButton';
+import { useToast } from '../components/ui/Toast';
 import { formatDate } from '../utils/formatters';
 import { useAuth } from '../context/AuthContext';
 
 export const NotificationChannelsPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const { role, activeTenant } = useAuth();
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [testResult, setTestResult] = useState<{ channelId: number; success: boolean; message: string } | null>(null);
+  const [channelToDelete, setChannelToDelete] = useState<number | null>(null);
+  const [testingChannelId, setTestingChannelId] = useState<number | null>(null);
 
   const canManageChannels = role === 'OWNER' || role === 'ADMIN';
 
@@ -70,29 +73,41 @@ export const NotificationChannelsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['notificationChannels'] });
       setCreateModalOpen(false);
       resetForm();
+      toast.success('Notification channel created successfully.');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail || err.message || 'Failed to create channel.');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteNotificationChannel(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notificationChannels'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notificationChannels'] });
+      setChannelToDelete(null);
+      toast.success('Channel deleted successfully.');
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail || 'Failed to delete channel.');
+    },
   });
 
   const testMutation = useMutation({
     mutationFn: (id: number) => testNotificationChannel(id),
+    onMutate: (id) => {
+      setTestingChannelId(id);
+    },
     onSuccess: (res, channelId) => {
-      setTestResult({
-        channelId,
-        success: res.success,
-        message: res.message || (res.success ? 'Notification sent successfully' : 'Delivery failed'),
-      });
+      setTestingChannelId(null);
+      if (res.success) {
+        toast.success(`Channel #${channelId} test passed: ${res.message || 'Notification sent successfully'}`);
+      } else {
+        toast.error(`Channel #${channelId} test failed: ${res.message || 'Delivery failed'}`);
+      }
     },
     onError: (err: any, channelId) => {
-      setTestResult({
-        channelId,
-        success: false,
-        message: err.message || 'Test delivery request failed',
-      });
+      setTestingChannelId(null);
+      toast.error(`Channel #${channelId} test failed: ${err?.response?.data?.detail || err.message}`);
     },
   });
 
@@ -147,60 +162,33 @@ export const NotificationChannelsPage: React.FC = () => {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-100">Notification Channels</h1>
-          <p className="text-sm text-slate-400 mt-1 font-mono">
+          <h1 className="text-xl font-bold text-slate-100">Notification Channels</h1>
+          <p className="text-xs text-slate-400 mt-1">
             Configure SMTP email, Slack webhooks, and generic endpoints for instant outage and recovery alerts.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => refetch()}
-            type="button"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-xs font-mono text-slate-300 hover:text-white transition-colors"
+            isLoading={isFetching}
+            leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
+            Refresh
+          </Button>
           {canManageChannels && (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => setCreateModalOpen(true)}
-              type="button"
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md transition-colors"
+              leftIcon={<PlusCircle className="w-3.5 h-3.5" />}
             >
-              <PlusCircle className="w-4 h-4" />
-              <span>Add Channel</span>
-            </button>
+              Add Channel
+            </Button>
           )}
         </div>
       </div>
-
-      {/* Test Result Toast Banner */}
-      {testResult && (
-        <div
-          className={`p-4 rounded-xl border flex items-center justify-between text-xs font-mono backdrop-blur-sm ${
-            testResult.success
-              ? 'bg-emerald-950/40 border-emerald-800 text-emerald-300'
-              : 'bg-rose-950/40 border-rose-800 text-rose-300'
-          }`}
-        >
-          <div className="flex items-center gap-2.5">
-            {testResult.success ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            ) : (
-              <XCircle className="w-4 h-4 text-rose-400" />
-            )}
-            <span>
-              <strong>Channel #{testResult.channelId} Test:</strong> {testResult.message}
-            </span>
-          </div>
-          <button
-            onClick={() => setTestResult(null)}
-            className="text-slate-400 hover:text-slate-200 text-xs underline ml-4"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
 
       {/* Channels Grid / List */}
       {isLoading ? (
@@ -223,7 +211,7 @@ export const NotificationChannelsPage: React.FC = () => {
             return (
               <div
                 key={chan.id}
-                className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 backdrop-blur-sm flex flex-col justify-between space-y-4"
+                className="rounded-xl border border-slate-800 bg-slate-900 p-4 flex flex-col justify-between space-y-4"
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">
@@ -239,7 +227,7 @@ export const NotificationChannelsPage: React.FC = () => {
                     <span
                       className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
                         chan.enabled
-                          ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/60'
+                          ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800'
                           : 'bg-slate-800 text-slate-500 border-slate-700'
                       }`}
                     >
@@ -269,29 +257,28 @@ export const NotificationChannelsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs font-mono">
+                <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-xs font-mono">
                   <span className="text-slate-500 text-[10px]">{formatDate(chan.created_at)}</span>
                   <div className="flex items-center gap-2">
                     {canManageChannels && (
                       <>
-                        <button
+                        <Button
+                          variant="secondary"
+                          size="xs"
                           onClick={() => testMutation.mutate(chan.id)}
-                          disabled={testMutation.isPending}
-                          type="button"
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 transition-colors"
-                          title="Send test notification"
+                          isLoading={testingChannelId === chan.id}
+                          leftIcon={<Send className="w-3 h-3 text-emerald-400" />}
                         >
-                          <Send className="w-3 h-3" />
-                          <span>{testMutation.isPending ? 'Sending...' : 'Test'}</span>
-                        </button>
-                        <button
-                          onClick={() => deleteMutation.mutate(chan.id)}
-                          type="button"
-                          className="p-1 rounded bg-slate-800 hover:bg-rose-950/60 text-slate-400 hover:text-rose-400 border border-slate-700 transition-colors"
+                          Test
+                        </Button>
+                        <IconButton
+                          variant="danger"
+                          size="xs"
+                          onClick={() => setChannelToDelete(chan.id)}
+                          icon={<Trash2 className="w-3.5 h-3.5" />}
+                          aria-label="Delete channel"
                           title="Delete channel"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        />
                       </>
                     )}
                   </div>
@@ -309,7 +296,7 @@ export const NotificationChannelsPage: React.FC = () => {
         title="Add Notification Channel"
         maxWidth="md"
       >
-        <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs font-mono">
+        <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
           <div>
             <label className="block text-slate-300 mb-1 font-medium">Channel Name *</label>
             <input
@@ -345,7 +332,7 @@ export const NotificationChannelsPage: React.FC = () => {
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}
                 required
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
               />
             </div>
           )}
@@ -361,7 +348,7 @@ export const NotificationChannelsPage: React.FC = () => {
                     value={smtpHost}
                     onChange={(e) => setSmtpHost(e.target.value)}
                     required
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
                   />
                 </div>
                 <div>
@@ -369,8 +356,8 @@ export const NotificationChannelsPage: React.FC = () => {
                   <input
                     type="number"
                     value={smtpPort}
-                    onChange={(e) => setSmtpPort(parseInt(e.target.value, 10))}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                    onChange={(e) => setSmtpPort(parseInt(e.target.value, 10) || 587)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
                   />
                 </div>
               </div>
@@ -381,7 +368,7 @@ export const NotificationChannelsPage: React.FC = () => {
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
                   />
                 </div>
                 <div>
@@ -390,7 +377,7 @@ export const NotificationChannelsPage: React.FC = () => {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
                   />
                 </div>
               </div>
@@ -402,7 +389,7 @@ export const NotificationChannelsPage: React.FC = () => {
                   value={toEmails}
                   onChange={(e) => setToEmails(e.target.value)}
                   required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
                 />
               </div>
             </div>
@@ -418,7 +405,7 @@ export const NotificationChannelsPage: React.FC = () => {
                   value={webhookUrl}
                   onChange={(e) => setWebhookUrl(e.target.value)}
                   required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
                 />
               </div>
               <div>
@@ -428,29 +415,61 @@ export const NotificationChannelsPage: React.FC = () => {
                   placeholder="Bearer your-secret-token"
                   value={authHeader}
                   onChange={(e) => setAuthHeader(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
                 />
               </div>
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-            <button
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setCreateModalOpen(false)}
-              type="button"
-              className="px-3.5 py-1.5 rounded-lg border border-slate-800 text-slate-300 hover:bg-slate-800 transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              disabled={createMutation.isPending}
-              className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors"
+              variant="primary"
+              size="sm"
+              isLoading={createMutation.isPending}
             >
-              {createMutation.isPending ? 'Creating...' : 'Create Channel'}
-            </button>
+              Create Channel
+            </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={channelToDelete !== null}
+        onClose={() => setChannelToDelete(null)}
+        title="Confirm Channel Deletion"
+        maxWidth="sm"
+      >
+        <div className="space-y-4 text-xs">
+          <p className="text-slate-300">
+            Are you sure you want to delete this notification channel? It will be removed from all alert routing policies.
+          </p>
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setChannelToDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => channelToDelete && deleteMutation.mutate(channelToDelete)}
+              isLoading={deleteMutation.isPending}
+            >
+              Confirm Delete
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

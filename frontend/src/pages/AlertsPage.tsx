@@ -15,6 +15,7 @@ import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
 import { Modal } from '../components/Modal';
+import { Button } from '../components/ui/Button';
 import { formatDate, formatRelativeTime } from '../utils/formatters';
 
 export const AlertsPage: React.FC = () => {
@@ -59,26 +60,27 @@ export const AlertsPage: React.FC = () => {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-100">Alerts & Incidents</h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <h1 className="text-xl font-bold text-slate-100">Alerts & Incidents</h1>
+          <p className="text-xs text-slate-400 mt-1">
             Outage detections, state transitions, cooldown suppression, and multi-channel delivery logs.
           </p>
         </div>
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => refetch()}
-          type="button"
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-xs font-mono text-slate-300 hover:text-white transition-colors"
+          isLoading={isFetching}
+          leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
-        </button>
+          Refresh
+        </Button>
       </div>
 
       {/* Active Outage Banner */}
       {activeOutages.length > 0 && (
-        <div className="rounded-xl border border-rose-900/60 bg-rose-950/20 p-5 backdrop-blur-sm">
-          <div className="flex items-center gap-2.5 text-rose-400 font-semibold mb-3">
-            <Flame className="w-5 h-5 text-rose-400" />
+        <div className="rounded-xl border border-rose-900/60 bg-rose-950/20 p-4">
+          <div className="flex items-center gap-2.5 text-rose-400 font-semibold mb-3 text-sm">
+            <Flame className="w-4 h-4 text-rose-400" />
             <span>Active Outage Incidents ({activeOutages.length})</span>
           </div>
           <div className="space-y-2">
@@ -93,12 +95,13 @@ export const AlertsPage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="text-slate-400">{formatRelativeTime(outage.created_at)}</span>
-                  <button
+                  <Button
+                    variant="danger"
+                    size="xs"
                     onClick={() => setInspectEvent(outage)}
-                    className="px-2 py-1 rounded bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700 font-bold"
                   >
                     Inspect
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
@@ -107,13 +110,13 @@ export const AlertsPage: React.FC = () => {
       )}
 
       {/* Filter Toolbar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm text-xs font-mono">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-xl border border-slate-800 bg-slate-900 text-xs">
         <div>
           <label className="block text-slate-400 mb-1 font-medium">Filter by Target</label>
           <select
             value={selectedTarget ?? ''}
             onChange={(e) => setSelectedTarget(e.target.value ? Number(e.target.value) : undefined)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
           >
             <option value="">All Targets</option>
             {targets?.map((t) => (
@@ -129,7 +132,7 @@ export const AlertsPage: React.FC = () => {
           <select
             value={selectedEventType}
             onChange={(e) => setSelectedEventType(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
           >
             <option value="ALL">All Event Types</option>
             <option value="OUTAGE">OUTAGE</option>
@@ -142,7 +145,7 @@ export const AlertsPage: React.FC = () => {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
           >
             <option value="ALL">All Statuses</option>
             <option value="PENDING">PENDING</option>
@@ -155,7 +158,7 @@ export const AlertsPage: React.FC = () => {
       </div>
 
       {/* Alert Events Table */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/70 overflow-hidden backdrop-blur-sm">
+      <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden">
         {isLoading ? (
           <div className="p-6">
             <LoadingSkeleton rows={6} />
@@ -171,22 +174,22 @@ export const AlertsPage: React.FC = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-slate-950/60 text-slate-400 uppercase tracking-wider border-b border-slate-800 text-[11px]">
+              <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 text-[11px]">
                 <tr>
-                  <th className="py-3.5 px-4 font-semibold">Time</th>
-                  <th className="py-3.5 px-4 font-semibold">Target ID</th>
-                  <th className="py-3.5 px-4 font-semibold">Event</th>
-                  <th className="py-3.5 px-4 font-semibold">Status</th>
-                  <th className="py-3.5 px-4 font-semibold">Message & Reason</th>
-                  <th className="py-3.5 px-4 font-semibold">Resolved</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Deliveries</th>
+                  <th className="py-2.5 px-4 font-semibold">Time</th>
+                  <th className="py-2.5 px-4 font-semibold">Target ID</th>
+                  <th className="py-2.5 px-4 font-semibold">Event</th>
+                  <th className="py-2.5 px-4 font-semibold">Status</th>
+                  <th className="py-2.5 px-4 font-semibold">Message & Reason</th>
+                  <th className="py-2.5 px-4 font-semibold">Resolved</th>
+                  <th className="py-2.5 px-4 font-semibold text-right">Deliveries</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
                 {alerts.map((a) => (
                   <tr key={a.id} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="py-3 px-4 text-slate-300">{formatDate(a.created_at)}</td>
-                    <td className="py-3 px-4">
+                    <td className="py-2.5 px-4 text-slate-300">{formatDate(a.created_at)}</td>
+                    <td className="py-2.5 px-4">
                       <Link
                         to={`/targets/${a.target_id}`}
                         className="font-bold text-emerald-400 hover:underline inline-flex items-center gap-1"
@@ -195,30 +198,30 @@ export const AlertsPage: React.FC = () => {
                         <ExternalLink className="w-3 h-3" />
                       </Link>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-2.5 px-4">
                       <StatusBadge status={a.event_type} size="sm" />
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-2.5 px-4">
                       <StatusBadge status={a.status} size="sm" />
                     </td>
-                    <td className="py-3 px-4 text-slate-300 max-w-sm truncate" title={a.message}>
+                    <td className="py-2.5 px-4 text-slate-300 max-w-sm truncate" title={a.message}>
                       {a.message}
                     </td>
-                    <td className="py-3 px-4 text-slate-400">
+                    <td className="py-2.5 px-4 text-slate-400">
                       {a.resolved_at ? (
                         <span className="text-emerald-400 font-bold">{formatRelativeTime(a.resolved_at)}</span>
                       ) : (
                         <span className="text-rose-400 font-semibold">Active</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
+                    <td className="py-2.5 px-4 text-right">
+                      <Button
+                        variant="secondary"
+                        size="xs"
                         onClick={() => setInspectEvent(a)}
-                        type="button"
-                        className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
                       >
                         Inspect
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}

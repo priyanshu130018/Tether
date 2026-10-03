@@ -80,21 +80,26 @@ def detailed_health(db: Session = Depends(get_db)) -> dict[str, Any]:
     try:
         db.execute(text("SELECT 1"))
         db_status = "healthy"
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Detailed health database check failed: %s", exc)
 
     redis_status = "unhealthy"
     try:
         r = redis.Redis.from_url(settings.redis_url, socket_timeout=2.0)
         if r.ping():
             redis_status = "healthy"
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Detailed health Redis check failed: %s", exc)
 
-    is_overall_healthy = db_status == "healthy" and redis_status == "healthy"
+    if db_status == "healthy" and redis_status == "healthy":
+        overall_status = "healthy"
+    elif db_status == "healthy" or redis_status == "healthy":
+        overall_status = "degraded"
+    else:
+        overall_status = "unhealthy"
 
     return {
-        "status": "healthy" if is_overall_healthy else "degraded",
+        "status": overall_status,
         "app_name": settings.app_name,
         "version": settings.app_version,
         "environment": settings.environment,

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { SystemStatusPage } from '../pages/SystemStatusPage';
 import { AuthProvider } from '../context/AuthContext';
+import { ToastProvider } from '../components/ui/Toast';
 import * as systemApi from '../api/system';
 import * as workersApi from '../api/workers';
 import * as authApi from '../api/auth';
@@ -50,7 +51,9 @@ const renderWithProviders = (ui: React.ReactElement) => {
   return render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>{ui}</BrowserRouter>
+        <ToastProvider>
+          <BrowserRouter>{ui}</BrowserRouter>
+        </ToastProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
@@ -65,7 +68,7 @@ describe('Phase 7: System Observability & Infrastructure UI', () => {
     expect(screen.getByText(/FastAPI Service/i)).toBeInTheDocument();
     expect(screen.getAllByText(/PostgreSQL/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Redis Broker/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/1 Active Nodes/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 Active Node/i)).toBeInTheDocument();
     expect(screen.getByText(/Environment: production/i)).toBeInTheDocument();
   });
 });

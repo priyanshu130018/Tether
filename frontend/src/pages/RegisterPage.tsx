@@ -2,10 +2,14 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Radio, Lock, Mail, User, Building, AlertCircle, ArrowRight } from 'lucide-react';
+import { Button } from '../components/ui/Button';
+import { FormField, Input } from '../components/ui/FormField';
+import { useToast } from '../components/ui/Toast';
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const { showToast } = useToast();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -20,21 +24,28 @@ export const RegisterPage: React.FC = () => {
     setError(null);
 
     if (password.length < 8) {
-      setError('Password must be at least 8 characters in length.');
+      const msg = 'Password must be at least 8 characters in length.';
+      setError(msg);
+      showToast('error', msg);
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      const msg = 'Passwords do not match.';
+      setError(msg);
+      showToast('error', msg);
       return;
     }
 
     setIsSubmitting(true);
     try {
       await register(email, password, fullName, organizationName || undefined);
+      showToast('success', 'Account and organization created successfully');
       navigate('/', { replace: true });
     } catch (err: any) {
-      setError(err?.message || 'Registration failed. Please try again.');
+      const msg = err?.message || 'Registration failed. Please try again.';
+      setError(msg);
+      showToast('error', msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -79,13 +90,10 @@ export const RegisterPage: React.FC = () => {
           )}
 
           <form className="space-y-4" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="fullName" className="block text-xs font-mono font-medium text-slate-300">
-                Full Name
-              </label>
-              <div className="mt-1.5 relative">
+            <FormField label="Full Name" htmlFor="fullName" required>
+              <div className="relative">
                 <User className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
+                <Input
                   id="fullName"
                   name="fullName"
                   type="text"
@@ -93,18 +101,15 @@ export const RegisterPage: React.FC = () => {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Jane Doe"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  className="pl-9"
                 />
               </div>
-            </div>
+            </FormField>
 
-            <div>
-              <label htmlFor="email" className="block text-xs font-mono font-medium text-slate-300">
-                Work Email Address
-              </label>
-              <div className="mt-1.5 relative">
+            <FormField label="Work Email Address" htmlFor="email" required>
+              <div className="relative">
                 <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
+                <Input
                   id="email"
                   name="email"
                   type="email"
@@ -112,36 +117,30 @@ export const RegisterPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="jane@example.com"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  className="pl-9"
                 />
               </div>
-            </div>
+            </FormField>
 
-            <div>
-              <label htmlFor="orgName" className="block text-xs font-mono font-medium text-slate-300">
-                Organization / Team Name (Optional)
-              </label>
-              <div className="mt-1.5 relative">
+            <FormField label="Organization / Team Name (Optional)" htmlFor="orgName">
+              <div className="relative">
                 <Building className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
+                <Input
                   id="orgName"
                   name="orgName"
                   type="text"
                   value={organizationName}
                   onChange={(e) => setOrganizationName(e.target.value)}
                   placeholder="Acme Infrastructure"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  className="pl-9"
                 />
               </div>
-            </div>
+            </FormField>
 
-            <div>
-              <label htmlFor="password" className="block text-xs font-mono font-medium text-slate-300">
-                Password (min. 8 characters)
-              </label>
-              <div className="mt-1.5 relative">
+            <FormField label="Password (min. 8 characters)" htmlFor="password" required>
+              <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
+                <Input
                   id="password"
                   name="password"
                   type="password"
@@ -149,18 +148,15 @@ export const RegisterPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  className="pl-9"
                 />
               </div>
-            </div>
+            </FormField>
 
-            <div>
-              <label htmlFor="confirmPassword" className="block text-xs font-mono font-medium text-slate-300">
-                Confirm Password
-              </label>
-              <div className="mt-1.5 relative">
+            <FormField label="Confirm Password" htmlFor="confirmPassword" required>
+              <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
+                <Input
                   id="confirmPassword"
                   name="confirmPassword"
                   type="password"
@@ -168,20 +164,22 @@ export const RegisterPage: React.FC = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  className="pl-9"
                 />
               </div>
-            </div>
+            </FormField>
 
             <div className="pt-2">
-              <button
+              <Button
                 type="submit"
-                disabled={isSubmitting}
-                className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent rounded-lg shadow-md text-xs font-mono font-bold text-white bg-emerald-600 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-50"
+                variant="primary"
+                size="md"
+                loading={isSubmitting}
+                className="w-full justify-center"
+                icon={<ArrowRight className="w-3.5 h-3.5" />}
               >
-                <span>{isSubmitting ? 'Provisioning...' : 'Create Account & Organization'}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+                Create Account & Organization
+              </Button>
             </div>
           </form>
 

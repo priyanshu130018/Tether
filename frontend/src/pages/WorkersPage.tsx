@@ -1,14 +1,18 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Cpu, RefreshCw, Clock } from 'lucide-react';
+import { Cpu, RefreshCw, Clock, Activity, AlertTriangle } from 'lucide-react';
 import { getWorkers } from '../api/workers';
 import { StatusBadge } from '../components/StatusBadge';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { ErrorState } from '../components/ErrorState';
 import { EmptyState } from '../components/EmptyState';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { useToast } from '../components/ui/Toast';
 import { formatRelativeTime } from '../utils/formatters';
 
 export const WorkersPage: React.FC = () => {
+  const { showToast } = useToast();
   const {
     data: workers,
     isLoading,
@@ -17,7 +21,14 @@ export const WorkersPage: React.FC = () => {
     isFetching,
   } = useQuery({
     queryKey: ['workers'],
-    queryFn: () => getWorkers(),
+    queryFn: async () => {
+      try {
+        return await getWorkers();
+      } catch (err: any) {
+        showToast('error', err?.message || 'Failed to retrieve Celery worker nodes');
+        throw err;
+      }
+    },
     refetchInterval: 5000,
   });
 
@@ -25,24 +36,63 @@ export const WorkersPage: React.FC = () => {
     return <ErrorState message="Failed to retrieve Celery worker nodes." onRetry={refetch} />;
   }
 
+  const totalWorkers = workers?.length || 0;
+  const activeWorkers = workers?.filter((w) => w.status === 'HEALTHY' || w.status === 'ONLINE').length || 0;
+  const totalActiveJobs = workers?.reduce((sum, w) => sum + (w.active_jobs || 0), 0) || 0;
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-100">Worker Fleet</h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Active Celery distributed monitoring workers, capacity, processed checks, and heartbeats.
+          <h1 className="text-2xl font-bold tracking-tight text-slate-100 flex items-center gap-2.5">
+            <Cpu className="w-6 h-6 text-emerald-400" />
+            <span>Worker Fleet</span>
+          </h1>
+          <p className="text-sm text-slate-400 mt-1 font-mono">
+            Active Celery distributed monitoring workers, execution load, processed tasks, and health heartbeats.
           </p>
         </div>
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => refetch()}
-          type="button"
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-xs font-mono text-slate-300 hover:text-white transition-colors"
+          loading={isFetching}
+          icon={<RefreshCw className="w-3.5 h-3.5" />}
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
-        </button>
+          Refresh
+        </Button>
+      </div>
+
+      {/* Summary Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono">
+        <Card className="p-4 flex items-center justify-between">
+          <div>
+            <div className="text-[11px] uppercase text-slate-500 font-semibold">Registered Workers</div>
+            <div className="text-2xl font-bold text-slate-100 mt-1">{totalWorkers}</div>
+          </div>
+          <div className="p-2.5 rounded-xl bg-slate-800 text-slate-400 border border-slate-700">
+            <Cpu className="w-5 h-5" />
+          </div>
+        </Card>
+        <Card className="p-4 flex items-center justify-between">
+          <div>
+            <div className="text-[11px] uppercase text-slate-500 font-semibold">Healthy Nodes</div>
+            <div className="text-2xl font-bold text-emerald-400 mt-1">{activeWorkers}</div>
+          </div>
+          <div className="p-2.5 rounded-xl bg-emerald-950/40 text-emerald-400 border border-emerald-800/60">
+            <Activity className="w-5 h-5" />
+          </div>
+        </Card>
+        <Card className="p-4 flex items-center justify-between">
+          <div>
+            <div className="text-[11px] uppercase text-slate-500 font-semibold">Executing Jobs</div>
+            <div className="text-2xl font-bold text-sky-400 mt-1">{totalActiveJobs}</div>
+          </div>
+          <div className="p-2.5 rounded-xl bg-sky-950/40 text-sky-400 border border-sky-800/60">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+        </Card>
       </div>
 
       {/* Workers Cards */}
@@ -51,15 +101,15 @@ export const WorkersPage: React.FC = () => {
       ) : !workers || workers.length === 0 ? (
         <EmptyState
           title="No worker nodes detected"
-          description="Ensure Celery workers are running and connected to Redis."
+          description="Ensure Celery distributed worker processes are running and connected to Redis."
           icon={Cpu}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {workers.map((w) => (
-            <div
+            <Card
               key={w.worker_id}
-              className="rounded-xl border border-slate-800 bg-slate-900/70 p-5 backdrop-blur-sm space-y-4"
+              className="p-5 space-y-4 hover:border-slate-700 transition-colors"
             >
               <div className="flex items-center justify-between pb-3 border-b border-slate-800">
                 <div className="flex items-center gap-2.5">
@@ -97,7 +147,7 @@ export const WorkersPage: React.FC = () => {
                 </span>
                 <span className="text-slate-200 font-bold">{formatRelativeTime(w.last_seen)}</span>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}

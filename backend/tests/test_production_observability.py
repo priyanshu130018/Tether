@@ -156,7 +156,7 @@ def test_json_log_formatter():
 def test_production_secret_validation():
     """Settings model validator rejects weak or default secrets when ENVIRONMENT=production."""
     # 1. Insecure default secret key rejected
-    with pytest.raises(ValueError, match="SECRET_KEY must be a cryptographically strong secret"):
+    with pytest.raises(ValueError, match="SECRET_KEY must not contain insecure default substrings"):
         Settings(
             environment="production",
             secret_key="tether-insecure-dev-secret-key-12345",
@@ -176,6 +176,7 @@ def test_production_secret_validation():
         environment="production",
         secret_key="a" * 64,
         database_url="postgresql+psycopg://prod_user:StrongSecurePassword456!@db:5432/prod_db",
+        log_format="json",
     )
     assert valid_settings.environment == "production"
     assert valid_settings.log_format == "json"

@@ -143,15 +143,10 @@ async def correlation_and_metrics_middleware(request: Request, call_next):
     return response
 
 
-# Allow CORS for dashboard access with explicit origins
-cors_origins = list(settings.cors_origins)
-for default_dev_origin in ("http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "http://127.0.0.1:3000"):
-    if default_dev_origin not in cors_origins:
-        cors_origins.append(default_dev_origin)
-
+# Configure CORS strictly from configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=list(settings.cors_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

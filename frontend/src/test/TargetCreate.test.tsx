@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { TargetCreatePage } from '../pages/TargetCreatePage';
 
 import { AuthProvider } from '../context/AuthContext';
+import { ToastProvider } from '../components/ui/Toast';
 import * as authApi from '../api/auth';
 
 vi.mock('../api/auth');
@@ -23,7 +24,9 @@ const renderWithProviders = (ui: React.ReactElement) => {
   return render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>{ui}</BrowserRouter>
+        <ToastProvider>
+          <BrowserRouter>{ui}</BrowserRouter>
+        </ToastProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

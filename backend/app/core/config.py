@@ -6,54 +6,77 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # Core Application Info
-    app_name: str = "Tether"
-    app_version: str = "1.0.0"
-    environment: Literal["development", "test", "production"] = "development"
+    # --- Required Core Application Info ---
+    app_name: str
+    app_version: str
+    environment: Literal["development", "test", "production"]
 
-    # Infrastructure URLs
-    database_url: str = "postgresql+psycopg://netwatch:change-me@localhost:5432/netwatch"
-    redis_url: str = "redis://localhost:6379/0"
-    celery_queue: str = "monitoring"
-    cors_origins: list[str] | str = ["http://localhost:5173", "http://localhost:3000"]
+    # --- Required Infrastructure URLs ---
+    database_url: str
+    redis_url: str
+    celery_queue: str
+    cors_origins: list[str] | str
 
-    # PostgreSQL Connection Pooling (Production)
-    db_pool_size: int = 20
-    db_max_overflow: int = 10
-    db_pool_timeout: float = 30.0
-    db_pool_recycle: int = 1800
+    # --- Required PostgreSQL Connection Pooling ---
+    db_pool_size: int
+    db_max_overflow: int
+    db_pool_timeout: float
+    db_pool_recycle: int
 
-    # Scheduling & Worker Retries
-    scheduler_tick_interval_seconds: float = 5.0
-    retry_initial_delay_seconds: float = 1.0
-    retry_backoff_factor: float = 2.0
-    retry_max_delay_seconds: float = 30.0
-    target_lock_ttl_seconds: int = 300
+    # --- Required Scheduling & Worker Retries ---
+    scheduler_tick_interval_seconds: float
+    retry_initial_delay_seconds: float
+    retry_backoff_factor: float
+    retry_max_delay_seconds: float
+    target_lock_ttl_seconds: int
 
-    # Authentication & Security
+    # --- Required Authentication & Security ---
     secret_key: str = Field(
-        default="tether-insecure-dev-secret-key-change-in-production-long-random-string-12345",
         validation_alias=AliasChoices("secret_key", "SECRET_KEY", "JWT_SECRET_KEY"),
     )
-    jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
-    refresh_token_expire_days: int = 7
-    auth_rate_limit_per_minute: int = 30
+    jwt_algorithm: str
+    access_token_expire_minutes: int
+    refresh_token_expire_days: int
+    auth_rate_limit_per_minute: int
 
-    # Data Retention Policies (Days)
-    result_retention_days: int = 30
-    job_retention_days: int = 14
-    alert_retention_days: int = 90
-    audit_log_retention_days: int = 365
+    # --- Required Data Retention Policies (Days) ---
+    result_retention_days: int
+    job_retention_days: int
+    alert_retention_days: int
+    audit_log_retention_days: int
 
-    # Observability & Logging
-    log_level: str = "INFO"
-    log_format: Literal["text", "json"] = "text"
+    # --- Required Logging ---
+    log_level: str
+    log_format: Literal["text", "json"]
+
+    # --- Optional Production Observability ---
     sentry_dsn: str | None = None
     otel_exporter_otlp_endpoint: str | None = None
     enable_tracing: bool = False
 
-    model_config = SettingsConfigDict(env_file=(".env", "../.env"), extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(".env", "../.env"),
+        extra="ignore",
+        case_sensitive=False,
+    )
+
+    @field_validator("secret_key")
+    @classmethod
+    def validate_secret_key(cls, value: str) -> str:
+        if len(value) < 32:
+            raise ValueError(
+                "SECRET_KEY must be a cryptographically strong secret with at least 32 characters."
+            )
+        return value
+
+    @field_validator("database_url", mode="after")
+    @classmethod
+    def normalize_database_url(cls, value: str) -> str:
+        if value.startswith("postgresql://"):
+            return "postgresql+psycopg://" + value[len("postgresql://") :]
+        if value.startswith("postgres://"):
+            return "postgresql+psycopg://" + value[len("postgres://") :]
+        return value
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -73,22 +96,21 @@ class Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
-    def validate_production_configuration(self) -> "Settings":
-        """Fail safely at startup if production environment has insecure or missing configuration."""
+    def validate_runtime_configuration(self) -> "Settings":
+        """Validate security and configuration constraints."""
+        if len(self.secret_key) < 32:
+            raise ValueError(
+                "SECRET_KEY must be a cryptographically strong secret with at least 32 characters."
+            )
         if self.environment == "production":
-            # 1. Enforce strong, non-default secret key
-            if "insecure-dev-secret-key" in self.secret_key or len(self.secret_key) < 32:
+            if "insecure-dev" in self.secret_key:
                 raise ValueError(
-                    "Production startup rejected: SECRET_KEY must be a cryptographically strong secret with at least 32 characters."
+                    "Production startup rejected: SECRET_KEY must not contain insecure default substrings."
                 )
-            # 2. Check for default database credentials
             if "change-me" in self.database_url:
                 raise ValueError(
                     "Production startup rejected: DATABASE_URL must not contain default development credentials ('change-me')."
                 )
-            # 3. Default log format in production to JSON if not explicitly specified
-            if self.log_format == "text":
-                object.__setattr__(self, "log_format", "json")
         return self
 
 

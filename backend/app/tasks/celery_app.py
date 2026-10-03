@@ -1,3 +1,4 @@
+import ssl
 from celery import Celery
 
 from app.core.config import get_settings
@@ -11,9 +12,9 @@ celery_app = Celery(
     include=["app.tasks.monitoring", "app.tasks.alerts", "app.tasks.maintenance"],
 )
 
-celery_app.conf.update(
-    task_default_queue=settings.celery_queue,
-    task_routes={
+conf_dict = {
+    "task_default_queue": settings.celery_queue,
+    "task_routes": {
         "app.tasks.monitoring.run_monitoring_check": {"queue": settings.celery_queue},
         "app.tasks.monitoring.run_tcp_check": {"queue": settings.celery_queue},
         "app.tasks.monitoring.schedule_due_targets": {"queue": settings.celery_queue},
@@ -22,16 +23,16 @@ celery_app.conf.update(
         "app.tasks.maintenance.cleanup_old_data": {"queue": settings.celery_queue},
     },
     # Task Reliability & Graceful Recovery
-    task_acks_late=True,
-    task_reject_on_worker_lost=True,
-    worker_prefetch_multiplier=1,
-    task_time_limit=120,
-    task_soft_time_limit=90,
-    result_expires=86400,
-    task_track_started=True,
-    broker_connection_retry_on_startup=True,
-    timezone="UTC",
-    beat_schedule={
+    "task_acks_late": True,
+    "task_reject_on_worker_lost": True,
+    "worker_prefetch_multiplier": 1,
+    "task_time_limit": 120,
+    "task_soft_time_limit": 90,
+    "result_expires": 86400,
+    "task_track_started": True,
+    "broker_connection_retry_on_startup": True,
+    "timezone": "UTC",
+    "beat_schedule": {
         "schedule-due-monitoring-checks": {
             "task": "app.tasks.monitoring.schedule_due_targets",
             "schedule": settings.scheduler_tick_interval_seconds,
@@ -43,6 +44,12 @@ celery_app.conf.update(
             "options": {"queue": settings.celery_queue},
         },
     },
-)
+}
 
+# Configure SSL/TLS support for Upstash Redis if using rediss://
+if settings.redis_url.startswith("rediss://"):
+    conf_dict["broker_use_ssl"] = {"ssl_cert_reqs": ssl.CERT_NONE}
+    conf_dict["redis_backend_use_ssl"] = {"ssl_cert_reqs": ssl.CERT_NONE}
+
+celery_app.conf.update(**conf_dict)
 celery_app.autodiscover_tasks(["app.tasks"])

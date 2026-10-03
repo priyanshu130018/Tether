@@ -4,10 +4,13 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, PlusCircle, Server, Shield, Globe } from 'lucide-react';
 import { createTarget } from '../api/targets';
 import { Protocol, TargetCreate } from '../types';
+import { Button } from '../components/ui/Button';
+import { useToast } from '../components/ui/Toast';
 
 export const TargetCreatePage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   const [name, setName] = useState('');
   const [hostname, setHostname] = useState('');
@@ -45,10 +48,13 @@ export const TargetCreatePage: React.FC = () => {
     onSuccess: (newTarget) => {
       queryClient.invalidateQueries({ queryKey: ['targets'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
+      toast.success('Target created successfully!');
       navigate(`/targets/${newTarget.id}`);
     },
     onError: (err: any) => {
-      setFormError(err.message || 'Failed to create target');
+      const msg = err?.response?.data?.detail || err.message || 'Failed to create target';
+      setFormError(msg);
+      toast.error(msg);
     },
   });
 
@@ -112,32 +118,33 @@ export const TargetCreatePage: React.FC = () => {
         <Link
           to="/targets"
           className="p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+          title="Back to targets"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-100">Add Monitoring Target</h1>
+          <h1 className="text-xl font-bold text-slate-100">Add Monitoring Target</h1>
           <p className="text-xs text-slate-400 mt-0.5">
             Configure automated periodic checks across TCP, HTTP, HTTPS, or DNS.
           </p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {formError && (
-          <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-800 text-rose-300 text-xs font-mono">
+          <div className="p-3.5 rounded-lg bg-rose-950/40 border border-rose-800 text-rose-300 text-xs">
             {formError}
           </div>
         )}
 
         {/* General Target Details */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 space-y-4 backdrop-blur-sm">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-5 space-y-4">
+          <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
             <Server className="w-4 h-4 text-emerald-400" />
             <span>Target Endpoint</span>
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             <div>
               <label htmlFor="target-name" className="block text-slate-300 mb-1.5 font-medium">
                 Target Name *
@@ -204,13 +211,13 @@ export const TargetCreatePage: React.FC = () => {
 
         {/* Protocol Specific Configuration */}
         {(protocol === 'http' || protocol === 'https') && (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 space-y-4 backdrop-blur-sm">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+          <div className="rounded-xl border border-slate-800 bg-slate-900 p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
               <Globe className="w-4 h-4 text-sky-400" />
               <span>HTTP / HTTPS Configuration</span>
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               <div>
                 <label htmlFor="http-method" className="block text-slate-300 mb-1.5 font-medium">
                   HTTP Method
@@ -260,7 +267,7 @@ export const TargetCreatePage: React.FC = () => {
               </div>
 
               <div className="flex flex-col justify-center space-y-2 pt-2">
-                <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
+                <label className="flex items-center gap-2 text-slate-300 cursor-pointer text-xs">
                   <input
                     type="checkbox"
                     checked={followRedirects}
@@ -271,7 +278,7 @@ export const TargetCreatePage: React.FC = () => {
                 </label>
 
                 {protocol === 'https' && (
-                  <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
+                  <label className="flex items-center gap-2 text-slate-300 cursor-pointer text-xs">
                     <input
                       type="checkbox"
                       checked={verifySsl}
@@ -287,13 +294,13 @@ export const TargetCreatePage: React.FC = () => {
         )}
 
         {protocol === 'dns' && (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 space-y-4 backdrop-blur-sm">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+          <div className="rounded-xl border border-slate-800 bg-slate-900 p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
               <Globe className="w-4 h-4 text-purple-400" />
               <span>DNS Configuration</span>
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               <div>
                 <label htmlFor="record-type" className="block text-slate-300 mb-1.5 font-medium">
                   Record Type
@@ -345,13 +352,13 @@ export const TargetCreatePage: React.FC = () => {
         )}
 
         {/* Scheduling & Execution Policies */}
-        <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 space-y-4 backdrop-blur-sm">
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-5 space-y-4">
+          <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
             <Shield className="w-4 h-4 text-emerald-400" />
             <span>Scheduling & Retry Policy</span>
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
             <div>
               <label htmlFor="interval-sec" className="block text-slate-300 mb-1.5 font-medium">
                 Interval (Seconds)
@@ -361,8 +368,8 @@ export const TargetCreatePage: React.FC = () => {
                 type="number"
                 min={10}
                 value={intervalSeconds}
-                onChange={(e) => setIntervalSeconds(parseInt(e.target.value, 10))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                onChange={(e) => setIntervalSeconds(parseInt(e.target.value, 10) || 10)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
               />
             </div>
 
@@ -377,8 +384,8 @@ export const TargetCreatePage: React.FC = () => {
                 min={1}
                 max={60}
                 value={timeoutSeconds}
-                onChange={(e) => setTimeoutSeconds(parseFloat(e.target.value))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                onChange={(e) => setTimeoutSeconds(parseFloat(e.target.value) || 5)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
               />
             </div>
 
@@ -392,14 +399,14 @@ export const TargetCreatePage: React.FC = () => {
                 min={0}
                 max={5}
                 value={retryCount}
-                onChange={(e) => setRetryCount(parseInt(e.target.value, 10))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
+                onChange={(e) => setRetryCount(parseInt(e.target.value, 10) || 0)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
               />
             </div>
           </div>
 
           <div className="pt-2">
-            <label className="flex items-center gap-2 text-xs font-mono text-slate-300 cursor-pointer">
+            <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
               <input
                 type="checkbox"
                 checked={enabled}
@@ -413,20 +420,20 @@ export const TargetCreatePage: React.FC = () => {
 
         {/* Submit Actions */}
         <div className="flex items-center justify-end gap-3 pt-2">
-          <Link
-            to="/targets"
-            className="px-4 py-2 rounded-lg border border-slate-800 text-xs font-mono font-medium text-slate-300 hover:bg-slate-800 transition-colors"
-          >
-            Cancel
+          <Link to="/targets">
+            <Button variant="outline" size="md">
+              Cancel
+            </Button>
           </Link>
-          <button
+          <Button
             type="submit"
-            disabled={createMutation.isPending}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-mono font-bold shadow-lg shadow-emerald-950/40 transition-colors disabled:opacity-50"
+            variant="primary"
+            size="md"
+            isLoading={createMutation.isPending}
+            leftIcon={<PlusCircle className="w-4 h-4" />}
           >
-            <PlusCircle className="w-4 h-4" />
-            <span>{createMutation.isPending ? 'Creating Target...' : 'Create Target'}</span>
-          </button>
+            Create Target
+          </Button>
         </div>
       </form>
     </div>

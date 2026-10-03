@@ -1,31 +1,51 @@
 services:
-  redis:
-    image: redis:7-alpine
+  reverse-proxy:
+    image: nginx:1.27-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
 
   backend:
     build:
       context: ./backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: redis://redis:6379/0
-      CELERY_QUEUE: ${CELERY_QUEUE:-monitoring}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
-    ports:
-      - "8000:8000"
+      ENVIRONMENT: ${ENVIRONMENT:?ENVIRONMENT is required}
+      LOG_LEVEL: ${LOG_LEVEL:?LOG_LEVEL is required}
+      LOG_FORMAT: ${LOG_FORMAT:?LOG_FORMAT is required}
+      APP_NAME: ${APP_NAME:?APP_NAME is required}
+      APP_VERSION: ${APP_VERSION:?APP_VERSION is required}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:?DB_POOL_SIZE is required}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:?DB_MAX_OVERFLOW is required}
+      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:?DB_POOL_TIMEOUT is required}
+      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:?DB_POOL_RECYCLE is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      CELERY_QUEUE: ${CELERY_QUEUE:?CELERY_QUEUE is required}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:?JWT_ALGORITHM is required}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:?ACCESS_TOKEN_EXPIRE_MINUTES is required}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:?REFRESH_TOKEN_EXPIRE_DAYS is required}
+      AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:?AUTH_RATE_LIMIT_PER_MINUTE is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+      SCHEDULER_TICK_INTERVAL_SECONDS: ${SCHEDULER_TICK_INTERVAL_SECONDS:?SCHEDULER_TICK_INTERVAL_SECONDS is required}
+      RETRY_INITIAL_DELAY_SECONDS: ${RETRY_INITIAL_DELAY_SECONDS:?RETRY_INITIAL_DELAY_SECONDS is required}
+      RETRY_BACKOFF_FACTOR: ${RETRY_BACKOFF_FACTOR:?RETRY_BACKOFF_FACTOR is required}
+      RETRY_MAX_DELAY_SECONDS: ${RETRY_MAX_DELAY_SECONDS:?RETRY_MAX_DELAY_SECONDS is required}
+      TARGET_LOCK_TTL_SECONDS: ${TARGET_LOCK_TTL_SECONDS:?TARGET_LOCK_TTL_SECONDS is required}
+      RESULT_RETENTION_DAYS: ${RESULT_RETENTION_DAYS:?RESULT_RETENTION_DAYS is required}
+      JOB_RETENTION_DAYS: ${JOB_RETENTION_DAYS:?JOB_RETENTION_DAYS is required}
+      ALERT_RETENTION_DAYS: ${ALERT_RETENTION_DAYS:?ALERT_RETENTION_DAYS is required}
+      AUDIT_LOG_RETENTION_DAYS: ${AUDIT_LOG_RETENTION_DAYS:?AUDIT_LOG_RETENTION_DAYS is required}
     volumes:
       - ./backend:/app
-    depends_on:
-      redis:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')"]
       interval: 15s
@@ -38,8 +58,6 @@ services:
     build:
       context: ./frontend
     restart: unless-stopped
-    ports:
-      - "3000:80"
     depends_on:
       - backend
 
@@ -47,33 +65,78 @@ services:
     build:
       context: ./backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: redis://redis:6379/0
-      CELERY_QUEUE: ${CELERY_QUEUE:-monitoring}
+      ENVIRONMENT: ${ENVIRONMENT:?ENVIRONMENT is required}
+      LOG_LEVEL: ${LOG_LEVEL:?LOG_LEVEL is required}
+      LOG_FORMAT: ${LOG_FORMAT:?LOG_FORMAT is required}
+      APP_NAME: ${APP_NAME:?APP_NAME is required}
+      APP_VERSION: ${APP_VERSION:?APP_VERSION is required}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:?DB_POOL_SIZE is required}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:?DB_MAX_OVERFLOW is required}
+      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:?DB_POOL_TIMEOUT is required}
+      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:?DB_POOL_RECYCLE is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      CELERY_QUEUE: ${CELERY_QUEUE:?CELERY_QUEUE is required}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:?JWT_ALGORITHM is required}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:?ACCESS_TOKEN_EXPIRE_MINUTES is required}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:?REFRESH_TOKEN_EXPIRE_DAYS is required}
+      AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:?AUTH_RATE_LIMIT_PER_MINUTE is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+      SCHEDULER_TICK_INTERVAL_SECONDS: ${SCHEDULER_TICK_INTERVAL_SECONDS:?SCHEDULER_TICK_INTERVAL_SECONDS is required}
+      RETRY_INITIAL_DELAY_SECONDS: ${RETRY_INITIAL_DELAY_SECONDS:?RETRY_INITIAL_DELAY_SECONDS is required}
+      RETRY_BACKOFF_FACTOR: ${RETRY_BACKOFF_FACTOR:?RETRY_BACKOFF_FACTOR is required}
+      RETRY_MAX_DELAY_SECONDS: ${RETRY_MAX_DELAY_SECONDS:?RETRY_MAX_DELAY_SECONDS is required}
+      TARGET_LOCK_TTL_SECONDS: ${TARGET_LOCK_TTL_SECONDS:?TARGET_LOCK_TTL_SECONDS is required}
+      RESULT_RETENTION_DAYS: ${RESULT_RETENTION_DAYS:?RESULT_RETENTION_DAYS is required}
+      JOB_RETENTION_DAYS: ${JOB_RETENTION_DAYS:?JOB_RETENTION_DAYS is required}
+      ALERT_RETENTION_DAYS: ${ALERT_RETENTION_DAYS:?ALERT_RETENTION_DAYS is required}
+      AUDIT_LOG_RETENTION_DAYS: ${AUDIT_LOG_RETENTION_DAYS:?AUDIT_LOG_RETENTION_DAYS is required}
     volumes:
       - ./backend:/app
-    depends_on:
-      redis:
-        condition: service_healthy
     healthcheck:
       disable: true
-    command: celery -A app.tasks.celery_app.celery_app worker --loglevel=INFO --queues=${CELERY_QUEUE:-monitoring}
+    command: celery -A app.tasks.celery_app.celery_app worker --loglevel=INFO --queues=${CELERY_QUEUE:?CELERY_QUEUE is required}
 
   celery-beat:
     build:
       context: ./backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: redis://redis:6379/0
-      CELERY_QUEUE: ${CELERY_QUEUE:-monitoring}
-      SCHEDULER_TICK_INTERVAL_SECONDS: ${SCHEDULER_TICK_INTERVAL_SECONDS:-5.0}
+      ENVIRONMENT: ${ENVIRONMENT:?ENVIRONMENT is required}
+      LOG_LEVEL: ${LOG_LEVEL:?LOG_LEVEL is required}
+      LOG_FORMAT: ${LOG_FORMAT:?LOG_FORMAT is required}
+      APP_NAME: ${APP_NAME:?APP_NAME is required}
+      APP_VERSION: ${APP_VERSION:?APP_VERSION is required}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:?DB_POOL_SIZE is required}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:?DB_MAX_OVERFLOW is required}
+      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:?DB_POOL_TIMEOUT is required}
+      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:?DB_POOL_RECYCLE is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      CELERY_QUEUE: ${CELERY_QUEUE:?CELERY_QUEUE is required}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:?JWT_ALGORITHM is required}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:?ACCESS_TOKEN_EXPIRE_MINUTES is required}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:?REFRESH_TOKEN_EXPIRE_DAYS is required}
+      AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:?AUTH_RATE_LIMIT_PER_MINUTE is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+      SCHEDULER_TICK_INTERVAL_SECONDS: ${SCHEDULER_TICK_INTERVAL_SECONDS:?SCHEDULER_TICK_INTERVAL_SECONDS is required}
+      RETRY_INITIAL_DELAY_SECONDS: ${RETRY_INITIAL_DELAY_SECONDS:?RETRY_INITIAL_DELAY_SECONDS is required}
+      RETRY_BACKOFF_FACTOR: ${RETRY_BACKOFF_FACTOR:?RETRY_BACKOFF_FACTOR is required}
+      RETRY_MAX_DELAY_SECONDS: ${RETRY_MAX_DELAY_SECONDS:?RETRY_MAX_DELAY_SECONDS is required}
+      TARGET_LOCK_TTL_SECONDS: ${TARGET_LOCK_TTL_SECONDS:?TARGET_LOCK_TTL_SECONDS is required}
+      RESULT_RETENTION_DAYS: ${RESULT_RETENTION_DAYS:?RESULT_RETENTION_DAYS is required}
+      JOB_RETENTION_DAYS: ${JOB_RETENTION_DAYS:?JOB_RETENTION_DAYS is required}
+      ALERT_RETENTION_DAYS: ${ALERT_RETENTION_DAYS:?ALERT_RETENTION_DAYS is required}
+      AUDIT_LOG_RETENTION_DAYS: ${AUDIT_LOG_RETENTION_DAYS:?AUDIT_LOG_RETENTION_DAYS is required}
     volumes:
       - ./backend:/app
-    depends_on:
-      redis:
-        condition: service_healthy
     healthcheck:
       disable: true
     command: celery -A app.tasks.celery_app.celery_app beat --loglevel=INFO --schedule=/tmp/celerybeat-schedule

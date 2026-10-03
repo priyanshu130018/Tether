@@ -2,11 +2,15 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Radio, Lock, Mail, AlertCircle, ArrowRight } from 'lucide-react';
+import { Button } from '../components/ui/Button';
+import { FormField, Input } from '../components/ui/FormField';
+import { useToast } from '../components/ui/Toast';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const { showToast } = useToast();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,9 +26,12 @@ export const LoginPage: React.FC = () => {
 
     try {
       await login(email, password);
+      showToast('success', 'Logged in successfully');
       navigate(from, { replace: true });
     } catch (err: any) {
-      setError(err?.message || 'Invalid email or password');
+      const msg = err?.message || 'Invalid email or password';
+      setError(msg);
+      showToast('error', msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -70,13 +77,10 @@ export const LoginPage: React.FC = () => {
           )}
 
           <form className="space-y-5" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="email" className="block text-xs font-mono font-medium text-slate-300">
-                Work Email Address
-              </label>
-              <div className="mt-1.5 relative">
+            <FormField label="Work Email Address" htmlFor="email" required>
+              <div className="relative">
                 <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
+                <Input
                   id="email"
                   name="email"
                   type="email"
@@ -85,18 +89,15 @@ export const LoginPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@example.com"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  className="pl-9"
                 />
               </div>
-            </div>
+            </FormField>
 
-            <div>
-              <label htmlFor="password" className="block text-xs font-mono font-medium text-slate-300">
-                Password
-              </label>
-              <div className="mt-1.5 relative">
+            <FormField label="Password" htmlFor="password" required>
+              <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
+                <Input
                   id="password"
                   name="password"
                   type="password"
@@ -105,20 +106,22 @@ export const LoginPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  className="pl-9"
                 />
               </div>
-            </div>
+            </FormField>
 
             <div>
-              <button
+              <Button
                 type="submit"
-                disabled={isSubmitting}
-                className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent rounded-lg shadow-md text-xs font-mono font-bold text-white bg-emerald-600 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-50"
+                variant="primary"
+                size="md"
+                loading={isSubmitting}
+                className="w-full justify-center"
+                icon={<ArrowRight className="w-3.5 h-3.5" />}
               >
-                <span>{isSubmitting ? 'Authenticating...' : 'Sign In'}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+                Sign In
+              </Button>
             </div>
           </form>
 

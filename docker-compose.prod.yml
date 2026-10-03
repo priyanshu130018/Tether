@@ -2,9 +2,9 @@
 # Tether - Production Docker Compose Stack (docker-compose.prod.yml)
 # ==============================================================================
 # Architecture:
-# - Reverse Proxy (Nginx) exposed on Port 80 (TLS terminated by upstream load balancer)
-# - Managed PostgreSQL Database (Neon PostgreSQL via DATABASE_URL)
-# - Internal Broker (Redis 7) - NO host port exposure
+# - Reverse Proxy (Nginx) exposed on Port 80
+# - Managed PostgreSQL Database (Neon PostgreSQL via DATABASE_URL from .env)
+# - Managed Redis Broker (Upstash Redis via REDIS_URL from .env)
 # - Multiple Celery Workers for scalable monitoring
 # - Single logical Celery Beat scheduler instance
 # ==============================================================================
@@ -23,44 +23,41 @@ services:
     networks:
       - tether-internal
 
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-    networks:
-      - tether-internal
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      ENVIRONMENT: production
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: redis://redis:6379/0
-      CELERY_QUEUE: monitoring
-      SECRET_KEY: ${PROD_SECRET_KEY:-9f83b2a71d0e45c68b3f2901a4e5789bcde0123456789abcdef0123456789abc}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
-      LOG_LEVEL: INFO
-      LOG_FORMAT: json
-      DB_POOL_SIZE: 20
-      DB_MAX_OVERFLOW: 10
-      DB_POOL_TIMEOUT: 30.0
-      DB_POOL_RECYCLE: 1800
-      RESULT_RETENTION_DAYS: 30
-      JOB_RETENTION_DAYS: 14
-      ALERT_RETENTION_DAYS: 90
-    depends_on:
-      redis:
-        condition: service_healthy
+      ENVIRONMENT: ${ENVIRONMENT:?ENVIRONMENT is required}
+      LOG_LEVEL: ${LOG_LEVEL:?LOG_LEVEL is required}
+      LOG_FORMAT: ${LOG_FORMAT:?LOG_FORMAT is required}
+      APP_NAME: ${APP_NAME:?APP_NAME is required}
+      APP_VERSION: ${APP_VERSION:?APP_VERSION is required}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:?DB_POOL_SIZE is required}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:?DB_MAX_OVERFLOW is required}
+      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:?DB_POOL_TIMEOUT is required}
+      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:?DB_POOL_RECYCLE is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      CELERY_QUEUE: ${CELERY_QUEUE:?CELERY_QUEUE is required}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:?JWT_ALGORITHM is required}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:?ACCESS_TOKEN_EXPIRE_MINUTES is required}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:?REFRESH_TOKEN_EXPIRE_DAYS is required}
+      AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:?AUTH_RATE_LIMIT_PER_MINUTE is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+      SCHEDULER_TICK_INTERVAL_SECONDS: ${SCHEDULER_TICK_INTERVAL_SECONDS:?SCHEDULER_TICK_INTERVAL_SECONDS is required}
+      RETRY_INITIAL_DELAY_SECONDS: ${RETRY_INITIAL_DELAY_SECONDS:?RETRY_INITIAL_DELAY_SECONDS is required}
+      RETRY_BACKOFF_FACTOR: ${RETRY_BACKOFF_FACTOR:?RETRY_BACKOFF_FACTOR is required}
+      RETRY_MAX_DELAY_SECONDS: ${RETRY_MAX_DELAY_SECONDS:?RETRY_MAX_DELAY_SECONDS is required}
+      TARGET_LOCK_TTL_SECONDS: ${TARGET_LOCK_TTL_SECONDS:?TARGET_LOCK_TTL_SECONDS is required}
+      RESULT_RETENTION_DAYS: ${RESULT_RETENTION_DAYS:?RESULT_RETENTION_DAYS is required}
+      JOB_RETENTION_DAYS: ${JOB_RETENTION_DAYS:?JOB_RETENTION_DAYS is required}
+      ALERT_RETENTION_DAYS: ${ALERT_RETENTION_DAYS:?ALERT_RETENTION_DAYS is required}
+      AUDIT_LOG_RETENTION_DAYS: ${AUDIT_LOG_RETENTION_DAYS:?AUDIT_LOG_RETENTION_DAYS is required}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')"]
       interval: 15s
@@ -88,17 +85,36 @@ services:
     restart: unless-stopped
     deploy:
       replicas: 2
+    env_file:
+      - .env
     environment:
-      ENVIRONMENT: production
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: redis://redis:6379/0
-      CELERY_QUEUE: monitoring
-      SECRET_KEY: ${PROD_SECRET_KEY:-9f83b2a71d0e45c68b3f2901a4e5789bcde0123456789abcdef0123456789abc}
-      LOG_LEVEL: INFO
-      LOG_FORMAT: json
-    depends_on:
-      redis:
-        condition: service_healthy
+      ENVIRONMENT: ${ENVIRONMENT:?ENVIRONMENT is required}
+      LOG_LEVEL: ${LOG_LEVEL:?LOG_LEVEL is required}
+      LOG_FORMAT: ${LOG_FORMAT:?LOG_FORMAT is required}
+      APP_NAME: ${APP_NAME:?APP_NAME is required}
+      APP_VERSION: ${APP_VERSION:?APP_VERSION is required}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:?DB_POOL_SIZE is required}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:?DB_MAX_OVERFLOW is required}
+      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:?DB_POOL_TIMEOUT is required}
+      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:?DB_POOL_RECYCLE is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      CELERY_QUEUE: ${CELERY_QUEUE:?CELERY_QUEUE is required}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:?JWT_ALGORITHM is required}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:?ACCESS_TOKEN_EXPIRE_MINUTES is required}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:?REFRESH_TOKEN_EXPIRE_DAYS is required}
+      AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:?AUTH_RATE_LIMIT_PER_MINUTE is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+      SCHEDULER_TICK_INTERVAL_SECONDS: ${SCHEDULER_TICK_INTERVAL_SECONDS:?SCHEDULER_TICK_INTERVAL_SECONDS is required}
+      RETRY_INITIAL_DELAY_SECONDS: ${RETRY_INITIAL_DELAY_SECONDS:?RETRY_INITIAL_DELAY_SECONDS is required}
+      RETRY_BACKOFF_FACTOR: ${RETRY_BACKOFF_FACTOR:?RETRY_BACKOFF_FACTOR is required}
+      RETRY_MAX_DELAY_SECONDS: ${RETRY_MAX_DELAY_SECONDS:?RETRY_MAX_DELAY_SECONDS is required}
+      TARGET_LOCK_TTL_SECONDS: ${TARGET_LOCK_TTL_SECONDS:?TARGET_LOCK_TTL_SECONDS is required}
+      RESULT_RETENTION_DAYS: ${RESULT_RETENTION_DAYS:?RESULT_RETENTION_DAYS is required}
+      JOB_RETENTION_DAYS: ${JOB_RETENTION_DAYS:?JOB_RETENTION_DAYS is required}
+      ALERT_RETENTION_DAYS: ${ALERT_RETENTION_DAYS:?ALERT_RETENTION_DAYS is required}
+      AUDIT_LOG_RETENTION_DAYS: ${AUDIT_LOG_RETENTION_DAYS:?AUDIT_LOG_RETENTION_DAYS is required}
     healthcheck:
       disable: true
     command: ["celery", "-A", "app.tasks.celery_app.celery_app", "worker", "--loglevel=INFO", "--concurrency=4", "--queues=monitoring"]
@@ -112,26 +128,41 @@ services:
     restart: unless-stopped
     deploy:
       replicas: 1  # Single logical scheduler instance
+    env_file:
+      - .env
     environment:
-      ENVIRONMENT: production
-      DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: redis://redis:6379/0
-      CELERY_QUEUE: monitoring
-      SECRET_KEY: ${PROD_SECRET_KEY:-9f83b2a71d0e45c68b3f2901a4e5789bcde0123456789abcdef0123456789abc}
-      SCHEDULER_TICK_INTERVAL_SECONDS: 5.0
-      LOG_LEVEL: INFO
-      LOG_FORMAT: json
-    depends_on:
-      redis:
-        condition: service_healthy
+      ENVIRONMENT: ${ENVIRONMENT:?ENVIRONMENT is required}
+      LOG_LEVEL: ${LOG_LEVEL:?LOG_LEVEL is required}
+      LOG_FORMAT: ${LOG_FORMAT:?LOG_FORMAT is required}
+      APP_NAME: ${APP_NAME:?APP_NAME is required}
+      APP_VERSION: ${APP_VERSION:?APP_VERSION is required}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:?DB_POOL_SIZE is required}
+      DB_MAX_OVERFLOW: ${DB_MAX_OVERFLOW:?DB_MAX_OVERFLOW is required}
+      DB_POOL_TIMEOUT: ${DB_POOL_TIMEOUT:?DB_POOL_TIMEOUT is required}
+      DB_POOL_RECYCLE: ${DB_POOL_RECYCLE:?DB_POOL_RECYCLE is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      CELERY_QUEUE: ${CELERY_QUEUE:?CELERY_QUEUE is required}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:?JWT_ALGORITHM is required}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:?ACCESS_TOKEN_EXPIRE_MINUTES is required}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:?REFRESH_TOKEN_EXPIRE_DAYS is required}
+      AUTH_RATE_LIMIT_PER_MINUTE: ${AUTH_RATE_LIMIT_PER_MINUTE:?AUTH_RATE_LIMIT_PER_MINUTE is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+      SCHEDULER_TICK_INTERVAL_SECONDS: ${SCHEDULER_TICK_INTERVAL_SECONDS:?SCHEDULER_TICK_INTERVAL_SECONDS is required}
+      RETRY_INITIAL_DELAY_SECONDS: ${RETRY_INITIAL_DELAY_SECONDS:?RETRY_INITIAL_DELAY_SECONDS is required}
+      RETRY_BACKOFF_FACTOR: ${RETRY_BACKOFF_FACTOR:?RETRY_BACKOFF_FACTOR is required}
+      RETRY_MAX_DELAY_SECONDS: ${RETRY_MAX_DELAY_SECONDS:?RETRY_MAX_DELAY_SECONDS is required}
+      TARGET_LOCK_TTL_SECONDS: ${TARGET_LOCK_TTL_SECONDS:?TARGET_LOCK_TTL_SECONDS is required}
+      RESULT_RETENTION_DAYS: ${RESULT_RETENTION_DAYS:?RESULT_RETENTION_DAYS is required}
+      JOB_RETENTION_DAYS: ${JOB_RETENTION_DAYS:?JOB_RETENTION_DAYS is required}
+      ALERT_RETENTION_DAYS: ${ALERT_RETENTION_DAYS:?ALERT_RETENTION_DAYS is required}
+      AUDIT_LOG_RETENTION_DAYS: ${AUDIT_LOG_RETENTION_DAYS:?AUDIT_LOG_RETENTION_DAYS is required}
     healthcheck:
       disable: true
     command: ["celery", "-A", "app.tasks.celery_app.celery_app", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
     networks:
       - tether-internal
-
-volumes:
-  redis_data:
 
 networks:
   tether-internal:

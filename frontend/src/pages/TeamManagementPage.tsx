@@ -3,22 +3,27 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listMembers, inviteMember, updateMemberRole, removeMember } from '../api/tenants';
 import { Role } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { Users, UserPlus, Shield, Trash2, RefreshCw, AlertCircle } from 'lucide-react';
+import { Users, UserPlus, Shield, Trash2, RefreshCw } from 'lucide-react';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { ErrorState } from '../components/ErrorState';
 import { Modal } from '../components/Modal';
+import { Button } from '../components/ui/Button';
+import { IconButton } from '../components/ui/IconButton';
+import { Card } from '../components/ui/Card';
+import { FormField, Input, Select } from '../components/ui/FormField';
+import { useToast } from '../components/ui/Toast';
 import { formatRelativeTime } from '../utils/formatters';
 
 export const TeamManagementPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { activeTenant, role: currentUserRole, user: currentUser } = useAuth();
+  const { showToast } = useToast();
 
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteName, setInviteName] = useState('');
   const [inviteRole, setInviteRole] = useState<Role>('MEMBER');
   const [memberToRemove, setMemberToRemove] = useState<number | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const canManageTeam = currentUserRole === 'OWNER' || currentUserRole === 'ADMIN';
 
@@ -41,10 +46,10 @@ export const TeamManagementPage: React.FC = () => {
       setInviteEmail('');
       setInviteName('');
       setInviteRole('MEMBER');
-      setErrorMsg(null);
+      showToast('success', 'Invitation sent successfully');
     },
     onError: (err: any) => {
-      setErrorMsg(err?.message || 'Failed to invite member');
+      showToast('error', err?.message || 'Failed to invite member');
     },
   });
 
@@ -52,9 +57,10 @@ export const TeamManagementPage: React.FC = () => {
     mutationFn: ({ id, role }: { id: number; role: Role }) => updateMemberRole(id, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team-members'] });
+      showToast('success', 'Member role updated');
     },
     onError: (err: any) => {
-      setErrorMsg(err?.message || 'Failed to update member role');
+      showToast('error', err?.message || 'Failed to update member role');
     },
   });
 
@@ -63,9 +69,10 @@ export const TeamManagementPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team-members'] });
       setMemberToRemove(null);
+      showToast('success', 'Member removed from organization');
     },
     onError: (err: any) => {
-      setErrorMsg(err?.message || 'Failed to remove member');
+      showToast('error', err?.message || 'Failed to remove member');
     },
   });
 
@@ -101,36 +108,30 @@ export const TeamManagementPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => refetch()}
-            type="button"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-xs font-mono text-slate-300 hover:text-white transition-colors"
+            loading={isFetching}
+            icon={<RefreshCw className="w-3.5 h-3.5" />}
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
+            Refresh
+          </Button>
           {canManageTeam && (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => setIsInviteOpen(true)}
-              type="button"
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md transition-colors"
+              icon={<UserPlus className="w-4 h-4" />}
             >
-              <UserPlus className="w-4 h-4" />
-              <span>Invite Member</span>
-            </button>
+              Invite Member
+            </Button>
           )}
         </div>
       </div>
 
-      {errorMsg && (
-        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-mono flex items-start gap-2.5">
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
       {/* Members Table */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/70 overflow-hidden backdrop-blur-sm">
+      <Card className="overflow-hidden">
         {isLoading ? (
           <div className="p-6">
             <LoadingSkeleton rows={4} />
@@ -191,14 +192,14 @@ export const TeamManagementPage: React.FC = () => {
                       {canManageTeam && (
                         <td className="py-3.5 px-4 text-right">
                           {!isMe && !isOwner && (
-                            <button
+                            <IconButton
+                              variant="danger"
+                              size="sm"
+                              icon={<Trash2 className="w-3.5 h-3.5" />}
                               onClick={() => setMemberToRemove(m.id)}
-                              type="button"
-                              className="p-1.5 rounded bg-slate-800 hover:bg-rose-900/60 text-slate-400 hover:text-rose-300 border border-slate-700 transition-colors"
+                              aria-label="Remove member"
                               title="Remove member"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            />
                           )}
                         </td>
                       )}
@@ -209,15 +210,12 @@ export const TeamManagementPage: React.FC = () => {
             </table>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Invite Member Modal */}
       <Modal
         isOpen={isInviteOpen}
-        onClose={() => {
-          setIsInviteOpen(false);
-          setErrorMsg(null);
-        }}
+        onClose={() => setIsInviteOpen(false)}
         title="Invite New Team Member"
         maxWidth="md"
       >
@@ -226,68 +224,54 @@ export const TeamManagementPage: React.FC = () => {
             Invite a colleague to collaborate in <strong className="text-slate-200">{activeTenant?.name}</strong>.
           </p>
 
-          <div>
-            <label htmlFor="invEmail" className="block font-medium text-slate-300 mb-1">
-              Colleague Email Address
-            </label>
-            <input
-              id="invEmail"
+          <FormField label="Colleague Email Address" required>
+            <Input
               type="email"
               required
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="colleague@example.com"
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
             />
-          </div>
+          </FormField>
 
-          <div>
-            <label htmlFor="invName" className="block font-medium text-slate-300 mb-1">
-              Full Name (Optional)
-            </label>
-            <input
-              id="invName"
+          <FormField label="Full Name (Optional)">
+            <Input
               type="text"
               value={inviteName}
               onChange={(e) => setInviteName(e.target.value)}
               placeholder="Alex Smith"
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500"
             />
-          </div>
+          </FormField>
 
-          <div>
-            <label htmlFor="invRole" className="block font-medium text-slate-300 mb-1">
-              Role & Permissions
-            </label>
-            <select
-              id="invRole"
+          <FormField label="Role & Permissions">
+            <Select
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value as Role)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
             >
               <option value="VIEWER">VIEWER (Read-only observability)</option>
               <option value="MEMBER">MEMBER (Manage targets, run checks)</option>
               <option value="ADMIN">ADMIN (Manage targets, channels, alert rules, team)</option>
               {currentUserRole === 'OWNER' && <option value="OWNER">OWNER (Full organization control)</option>}
-            </select>
-          </div>
+            </Select>
+          </FormField>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setIsInviteOpen(false)}
-              type="button"
-              className="px-3.5 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => inviteMutation.mutate()}
-              disabled={!inviteEmail || inviteMutation.isPending}
-              type="button"
-              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors disabled:opacity-50"
+              loading={inviteMutation.isPending}
+              disabled={!inviteEmail}
             >
-              {inviteMutation.isPending ? 'Sending Invitation...' : 'Send Invitation'}
-            </button>
+              Send Invitation
+            </Button>
           </div>
         </div>
       </Modal>
@@ -304,21 +288,21 @@ export const TeamManagementPage: React.FC = () => {
             Are you sure you want to remove this member? They will immediately lose access to all targets, alerts, and telemetry for this organization.
           </p>
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setMemberToRemove(null)}
-              type="button"
-              className="px-3.5 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
               onClick={() => memberToRemove && removeMutation.mutate(memberToRemove)}
-              disabled={removeMutation.isPending}
-              type="button"
-              className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold transition-colors"
+              loading={removeMutation.isPending}
             >
-              {removeMutation.isPending ? 'Removing...' : 'Remove Member'}
-            </button>
+              Remove Member
+            </Button>
           </div>
         </div>
       </Modal>

@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './components/ui/Toast';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppLayout } from './layouts/AppLayout';
 
@@ -40,8 +41,9 @@ export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>
-          <Suspense fallback={<LoadingFallback />}>
+        <ToastProvider>
+          <BrowserRouter>
+            <Suspense fallback={<LoadingFallback />}>
             <Routes>
               {/* Public Auth Routes */}
               <Route path="/login" element={<LoginPage />} />
@@ -73,6 +75,7 @@ export const App: React.FC = () => {
             </Routes>
           </Suspense>
         </BrowserRouter>
+        </ToastProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

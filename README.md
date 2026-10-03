@@ -6,7 +6,7 @@ Tether asynchronously monitors TCP, HTTP/HTTPS, and DNS targets, tracks health s
 
 ```text
 ================================================================================
-  Version: v1.0.0  |  License: MIT  |  Backend: 100/100 Tests  |  Frontend: 13/13 Tests
+  Version: v1.0.0  |  Backend: 100/100 Tests  |  Frontend: 13/13 Tests
 ================================================================================
 ```
 
@@ -271,20 +271,18 @@ Tether v1.0.0 is an open-source distributed monitoring platform with the followi
 ## 10. Documentation Index
 
 - **[System Architecture](docs/architecture.md)**: Detailed component breakdown, threading, and data flow.
-- **[Interview Defense Guide](docs/interview-guide.md)**: 33 systems design answers across architecture, reliability, security, and scaling.
-- **[Portfolio Case Study](docs/portfolio-case-study.md)**: Engineering case study detailing problems, hard challenges, and trade-offs.
-- **[5-Minute Demo Script](scripts/portfolio_demo.md)**: Structured live interview demonstration script.
-- **[Dashboard UI Views](docs/screenshots.md)**: Catalog of UI views, latency charts, and status indicators.
-- **[Verified Resume Facts](docs/resume-facts.md)**: Factual technical bullet points and measured metrics.
-- **[Monitoring Sequence](docs/monitoring-sequence.md)**: Sequence diagrams for probe scheduling and execution.
-- **[Security Architecture](docs/security-architecture.md)**: Threat defense, SSRF mitigations, token rotation, and RBAC model.
 - **[Architecture Decision Records (ADRs)](docs/architecture-decisions.md)**: ADR-001 through ADR-008 documenting all architectural trade-offs.
-- **[Performance Baseline](docs/performance-baseline.md)**: Benchmark methodology and baseline numbers.
-- **[Performance Report](docs/performance-report.md)**: Database indexing analysis, latency percentiles, and bundle metrics.
-- **[Resilience Matrix](docs/resilience-matrix.md)**: Failure mode analysis and self-healing matrices.
-- **[Technical Debt Register](docs/technical-debt.md)**: Documented limitations and scaling bottlenecks.
+- **[Monitoring Sequence](docs/monitoring-sequence.md)**: Sequence diagrams for probe scheduling and execution.
+- **[Security Architecture](docs/security.md)**: Threat defense, SSRF mitigations, token rotation, and RBAC model.
+- **[Performance Report](docs/performance.md)**: Benchmark methodology, database indexing analysis, and latency percentiles.
 - **[Operations Runbook](docs/runbook.md)**: Production incident management and disaster recovery playbooks.
+- **[Portfolio Case Study](docs/portfolio-case-study.md)**: Engineering case study detailing problems, hard challenges, and trade-offs.
+- **[Interview Defense Guide](docs/interview-guide.md)**: 33 systems design answers across architecture, reliability, security, and scaling.
+- **[Verified Resume Facts](docs/resume-facts.md)**: Factual technical bullet points and measured metrics.
 - **[Release Policy](docs/release.md)**: Versioning policy, release checklist, and rollback procedures.
+- **[Technical Debt Register](docs/technical-debt.md)**: Documented limitations and scaling bottlenecks.
+- **[Dashboard UI Views](docs/screenshots.md)**: Catalog of UI views, latency charts, and status indicators.
+- **[5-Minute Demo Script](scripts/portfolio_demo.md)**: Structured live interview demonstration script.
 
 ---
 

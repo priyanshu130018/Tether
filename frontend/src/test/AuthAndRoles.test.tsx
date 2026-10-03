@@ -7,6 +7,7 @@ import { LoginPage } from '../pages/LoginPage';
 import { RegisterPage } from '../pages/RegisterPage';
 import { TeamManagementPage } from '../pages/TeamManagementPage';
 import { AuthProvider } from '../context/AuthContext';
+import { ToastProvider } from '../components/ui/Toast';
 import * as authApi from '../api/auth';
 import * as tenantsApi from '../api/tenants';
 
@@ -20,7 +21,9 @@ const renderWithAuth = (ui: React.ReactElement) => {
   return render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>{ui}</BrowserRouter>
+        <ToastProvider>
+          <BrowserRouter>{ui}</BrowserRouter>
+        </ToastProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

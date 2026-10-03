@@ -10,6 +10,7 @@ import * as alertsApi from '../api/alerts';
 import * as targetsApi from '../api/targets';
 
 import { AuthProvider } from '../context/AuthContext';
+import { ToastProvider } from '../components/ui/Toast';
 import * as authApi from '../api/auth';
 
 vi.mock('../api/auth');
@@ -31,7 +32,9 @@ const renderWithProviders = (ui: React.ReactElement) => {
   return render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>{ui}</BrowserRouter>
+        <ToastProvider>
+          <BrowserRouter>{ui}</BrowserRouter>
+        </ToastProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

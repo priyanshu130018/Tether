@@ -273,7 +273,7 @@ def list_results(
 def get_target_latency_history(
     target_id: int,
     range: str = Query(default="24h", description="Time range: 1h, 6h, 24h, 7d"),
-    limit: int = Query(default=100, ge=1, le=500),
+    limit: int = Query(default=200, ge=1, le=1000),
     ctx: TenantContext = Depends(require_role(Role.VIEWER)),
     db: Session = Depends(get_db),
 ) -> list[dict]:
@@ -284,13 +284,14 @@ def get_target_latency_history(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target not found")
 
     now = datetime.now(timezone.utc)
+    normalized_range = range.lower().strip()
     delta_map = {
         "1h": timedelta(hours=1),
         "6h": timedelta(hours=6),
         "24h": timedelta(hours=24),
         "7d": timedelta(days=7),
     }
-    time_delta = delta_map.get(range.lower(), timedelta(hours=24))
+    time_delta = delta_map.get(normalized_range, timedelta(hours=24))
     since = now - time_delta
 
     stmt = (
@@ -298,18 +299,73 @@ def get_target_latency_history(
         .where(
             MonitoringResult.target_id == target_id,
             MonitoringResult.timestamp >= since,
+            MonitoringResult.timestamp <= now,
         )
         .order_by(MonitoringResult.timestamp.asc())
-        .limit(limit)
     )
-    results = list(db.scalars(stmt).all())
+    raw_results = list(db.scalars(stmt).all())
 
-    return [
-        {
-            "timestamp": r.timestamp.isoformat() if r.timestamp else now.isoformat(),
-            "latency_ms": r.latency_ms,
-            "status": r.status.value if hasattr(r.status, "value") else str(r.status),
-            "status_code": r.status_code,
-        }
-        for r in results
-    ]
+    if not raw_results:
+        return []
+
+    # If count is small or 1h range, return raw chronological points
+    max_desired_points = 120
+    if len(raw_results) <= max_desired_points or normalized_range == "1h":
+        return [
+            {
+                "timestamp": r.timestamp.isoformat() if r.timestamp else now.isoformat(),
+                "latency_ms": r.latency_ms,
+                "status": r.status.value if hasattr(r.status, "value") else str(r.status),
+                "status_code": r.status_code,
+            }
+            for r in raw_results
+        ]
+
+    # Server-side downsampling / bucketing for larger ranges
+    total_seconds = time_delta.total_seconds()
+    bucket_count = min(max_desired_points, len(raw_results))
+    bucket_size_seconds = total_seconds / bucket_count
+
+    buckets: dict[int, list[MonitoringResult]] = {}
+    since_ts = since.timestamp()
+
+    for r in raw_results:
+        if not r.timestamp:
+            continue
+        ts = r.timestamp.timestamp() if r.timestamp.tzinfo else r.timestamp.replace(tzinfo=timezone.utc).timestamp()
+        bucket_idx = int((ts - since_ts) / bucket_size_seconds)
+        bucket_idx = max(0, min(bucket_idx, bucket_count - 1))
+        if bucket_idx not in buckets:
+            buckets[bucket_idx] = []
+        buckets[bucket_idx].append(r)
+
+    downsampled: list[dict] = []
+    for bucket_idx in sorted(buckets.keys()):
+        bucket_items = buckets[bucket_idx]
+        if not bucket_items:
+            continue
+
+        # Check if ANY item in bucket is down/failed to preserve outage visibility
+        has_down = any(
+            (r.status.value if hasattr(r.status, "value") else str(r.status)).lower() == "down"
+            for r in bucket_items
+        )
+
+        valid_latencies = [r.latency_ms for r in bucket_items if r.latency_ms is not None]
+        avg_latency = round(sum(valid_latencies) / len(valid_latencies), 1) if valid_latencies else None
+
+        # Pick latest timestamp and status_code in this bucket
+        latest_item = bucket_items[-1]
+        bucket_timestamp = latest_item.timestamp.isoformat() if latest_item.timestamp else now.isoformat()
+        status_code = latest_item.status_code
+
+        downsampled.append(
+            {
+                "timestamp": bucket_timestamp,
+                "latency_ms": avg_latency,
+                "status": "down" if has_down else "up",
+                "status_code": status_code,
+            }
+        )
+
+    return downsampled

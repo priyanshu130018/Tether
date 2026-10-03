@@ -5,11 +5,16 @@ import { useAuth } from '../context/AuthContext';
 import { Settings, Building, PlusCircle, Shield, History, RefreshCw, Lock } from 'lucide-react';
 import { LoadingSkeleton } from '../components/LoadingSkeleton';
 import { Modal } from '../components/Modal';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { FormField, Input } from '../components/ui/FormField';
+import { useToast } from '../components/ui/Toast';
 import { formatRelativeTime } from '../utils/formatters';
 
 export const SettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { activeTenant, role, switchTenant, memberships, user } = useAuth();
+  const { showToast } = useToast();
 
   const [isNewOrgOpen, setIsNewOrgOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
@@ -35,7 +40,11 @@ export const SettingsPage: React.FC = () => {
       setIsNewOrgOpen(false);
       setNewOrgName('');
       setNewOrgSlug('');
+      showToast('success', `Organization "${tenant.name}" created successfully`);
       await switchTenant(tenant.id);
+    },
+    onError: (err: any) => {
+      showToast('error', err?.message || 'Failed to create organization');
     },
   });
 
@@ -53,7 +62,7 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       {/* Organization Overview Card */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 backdrop-blur-sm space-y-6">
+      <Card className="p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 border-b border-slate-800">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-xl bg-slate-800 text-emerald-400 border border-slate-700">
@@ -69,14 +78,14 @@ export const SettingsPage: React.FC = () => {
               <Shield className="w-3.5 h-3.5" />
               <span>Your Role: {role}</span>
             </span>
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setIsNewOrgOpen(true)}
-              type="button"
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-200 transition-colors"
+              icon={<PlusCircle className="w-3.5 h-3.5 text-emerald-400" />}
             >
-              <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
-              <span>New Organization</span>
-            </button>
+              New Organization
+            </Button>
           </div>
         </div>
 
@@ -107,7 +116,7 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Security & Audit Trail Section */}
       <div className="space-y-4">
@@ -122,14 +131,15 @@ export const SettingsPage: React.FC = () => {
             </p>
           </div>
           {canViewAudit && (
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => refetchAudit()}
-              type="button"
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900 text-xs font-mono text-slate-300 hover:text-white transition-colors"
+              loading={isAuditFetching}
+              icon={<RefreshCw className="w-3.5 h-3.5" />}
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isAuditFetching ? 'animate-spin' : ''}`} />
-              <span>Refresh</span>
-            </button>
+              Refresh
+            </Button>
           )}
         </div>
 
@@ -145,7 +155,7 @@ export const SettingsPage: React.FC = () => {
             No audit records found for this organization yet.
           </div>
         ) : (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/70 overflow-hidden backdrop-blur-sm">
+          <Card className="overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs font-mono">
                 <thead className="bg-slate-950/60 text-slate-400 uppercase tracking-wider border-b border-slate-800 text-[11px]">
@@ -174,7 +184,7 @@ export const SettingsPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
-          </div>
+          </Card>
         )}
       </div>
 
@@ -190,51 +200,42 @@ export const SettingsPage: React.FC = () => {
             Create an isolated monitoring tenant. You will become the <strong>OWNER</strong> of the new tenant.
           </p>
 
-          <div>
-            <label htmlFor="newOrgNameInput" className="block font-medium text-slate-300 mb-1">
-              Organization Name
-            </label>
-            <input
-              id="newOrgNameInput"
+          <FormField label="Organization Name" required>
+            <Input
               type="text"
               required
               value={newOrgName}
               onChange={(e) => setNewOrgName(e.target.value)}
               placeholder="Production Fleet US-East"
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
             />
-          </div>
+          </FormField>
 
-          <div>
-            <label htmlFor="newOrgSlugInput" className="block font-medium text-slate-300 mb-1">
-              Custom Slug (Optional)
-            </label>
-            <input
-              id="newOrgSlugInput"
+          <FormField label="Custom Slug (Optional)">
+            <Input
               type="text"
               value={newOrgSlug}
               onChange={(e) => setNewOrgSlug(e.target.value)}
               placeholder="prod-fleet-us-east"
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-500"
             />
-          </div>
+          </FormField>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setIsNewOrgOpen(false)}
-              type="button"
-              className="px-3.5 py-1.5 rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => createOrgMutation.mutate()}
-              disabled={!newOrgName || createOrgMutation.isPending}
-              type="button"
-              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors disabled:opacity-50"
+              loading={createOrgMutation.isPending}
+              disabled={!newOrgName}
             >
-              {createOrgMutation.isPending ? 'Creating...' : 'Create Organization'}
-            </button>
+              Create Organization
+            </Button>
           </div>
         </div>
       </Modal>
